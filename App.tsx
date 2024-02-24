@@ -50,13 +50,9 @@ const App = () => {
     new Map<Peripheral['id'], Peripheral>(),
   );
 
-  //console.debug('peripherals map updated', [...peripherals.entries()]);
-
   const startScan = () => {
     if (!isScanning) {
-      // reset found peripherals before scan
       setPeripherals(new Map<Peripheral['id'], Peripheral>());
-
       try {
         console.debug('[startScan] starting scan...');
         setIsScanning(true);
@@ -182,6 +178,8 @@ const App = () => {
         await BleManager.connect(peripheral.id);
         console.debug(`[connectPeripheral][${peripheral.id}] connected.`);
 
+        await sendOneMessage(peripheral); // Send "hi" message after connecting
+
         setPeripherals(map => {
           let p = map.get(peripheral.id);
           if (p) {
@@ -192,10 +190,8 @@ const App = () => {
           return map;
         });
 
-        // before retrieving services, it is often a good idea to let bonding & connection finish properly
         await sleep(900);
 
-        /* Test read current RSSI value, retrieve services first */
         const peripheralData = await BleManager.retrieveServices(peripheral.id);
         console.debug(
           `[connectPeripheral][${peripheral.id}] retrieved peripheral services`,
@@ -250,6 +246,33 @@ const App = () => {
     }
   };
 
+  const SERVICE_UUID = "55072829-bc9e-4c53-938a-74a6d4c78776";
+  const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+  
+  const sendOneMessage = async (peripheral: Peripheral) => {
+    try {
+      const numberToSend = 1;
+      const messageBytes = intToBytes(numberToSend); // Convert number to bytes
+      await BleManager.writeWithoutResponse(
+        peripheral.id,
+        SERVICE_UUID,
+        CHARACTERISTIC_UUID,
+        messageBytes,
+      );
+      console.debug('[sendOneMessage] "1" message sent successfully');
+    } catch (error) {
+      console.error('[sendOneMessage] Error sending "1" message:', error);
+    }
+  };
+  
+  // Function to convert number to bytes
+  function intToBytes(num: number) {
+    const bytes = [];
+    bytes.push(num & 0xff);
+    return bytes;
+  }
+  
+  
   function sleep(ms: number) {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
   }
